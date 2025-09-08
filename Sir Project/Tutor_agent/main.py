@@ -25,11 +25,7 @@ model = OpenAIChatCompletionsModel(
     openai_client=Provider,
 )
 
-# Only set tracing API key if it exists in environment
-if os.getenv("OPENAI_API_KEY"):
-    set_tracing_export_api_key(os.getenv("OPENAI_API_KEY"))
-
-
+set_tracing_export_api_key("Add_your_Openai_api_key")
 
 
 async def main():
