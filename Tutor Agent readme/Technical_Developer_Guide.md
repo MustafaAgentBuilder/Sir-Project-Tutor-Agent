@@ -1,6 +1,6 @@
 # Tutor.AI — Complete Technical Developer Guide 
 
-> **Purpose:** One clear, complete doc for your Sir and dev team.
+> **Purpose:** One clear, complete doc for your dev team.
 > Balanced language so juniors and seniors can both follow. This includes architecture, schemas, connectors, error handling, scaling, security, deployment, local dev, and migration strategy — everything needed to build Tutor.AI + universal LMS integration.
 
 ---
