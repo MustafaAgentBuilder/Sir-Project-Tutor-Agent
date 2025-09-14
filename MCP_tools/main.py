@@ -1,25 +1,43 @@
 from mcp.server.fastmcp import FastMCP
+from starlette.applications import Starlette
 from typing import Any
+
+# Simple test data
 STUDENTS = {
-    "mustafa_2024": {
-        "user_id": "mustafa_2024",
-        "name": "Mustafa",
-        "active_cursor_position": {"topic_id": "00_prompt_engineering"},
+    "student_01": {
+        "name": "Muhammad Mustafa",
+        "level": "beginner",
+        "active_cursor_position": {
+            "course_id": "PROMPT_ENGINEERING_101",
+            "topic_id": "00_prompt_engineering"
+        }
     }
 }
 
 COURSES = {
-    "PROMPT_ENGINEERING_101": {
-        "course_id": "PROMPT_ENGINEERING_101",
+    "AI-101": {
+        "title": "Low Code n8n Agentic AI Development & Modern Python Programming",
         "toc": [
-            {"name": "Prompt Engineering Fundamentals", "description": "Core concepts and principles"},
-            {"name": "Six-Part Prompting Framework", "description": "Structured approach to prompting"},
-            {"name": "Context Engineering Tutorial", "description": "Using context effectively"},
-        ],
+            {"name":"00_prompt_engineering", "description":"Introduction to Prompt Engineering"},
+            {"name":"01_quick_start", "description":"Quick Start"},
+            {"name":"02_beginner_tutorial", "description":"Beginner Tutorial"},
+            {"name":"03_code_expressions", "description":"Code Expressions"},
+            {"name":"04_ai_agents", "description":"AI Agents"},
+            {"name":"05_mcp", "description":"MCP"},
+        ]
+    },
+    "PROMPT_ENGINEERING_101": {
+        "title": "Prompt Engineering 101 - Complete Course",
+        "toc": [
+            {"name":"00_prompt_engineering", "description":"Introduction to Prompt Engineering"},
+            {"name":"01_quick_start", "description":"Quick Start Guide"},
+            {"name":"02_beginner_tutorial", "description":"Beginner Tutorial"},
+            {"name":"03_code_expressions", "description":"Code Expressions"},
+            {"name":"04_ai_agents", "description":"AI Agents"},
+            {"name":"05_mcp", "description":"MCP Tools"},
+        ]
     }
 }
-
-
 
 TOPICS = {
     "00_prompt_engineering": {
@@ -79,9 +97,8 @@ def get_personalized_content(topic_id: str, user_id: str, auth_token: str) -> di
         result = {}
         # load content from resource urls from local filesystem
         for key, url in content_resource_urls.items():
-            path = url.replace("file://", "./")
-            with open(path, "r", encoding="utf-8") as f:
-                result[key] = f.read()
+            file_path = url.replace("file://", "")
+            result[key] = open(file_path, "r", encoding="utf-8").read()
         return result
     raise ValueError(f"Topic {topic_id} not found")
 
@@ -106,9 +123,8 @@ def get_current_topic(user_id: str, auth_token: str) -> dict[str, Any]:
         result = {}
         # load content from resource urls from local filesystem
         for key, url in content_resource_urls.items():
-            path = url.replace("file://", "./")
-            with open(path, "r", encoding="utf-8") as f:
-                result[key] = f.read()
+            file_path = url.replace("file://", "")
+            result[key] = open(file_path, "r", encoding="utf-8").read()
 
         return {
             "topic_id": student["active_cursor_position"]["topic_id"],
@@ -116,4 +132,5 @@ def get_current_topic(user_id: str, auth_token: str) -> dict[str, Any]:
             "topic_content_data": result
         }
 
-streamable_http_app = mcp_app.streamable_http_app()
+app: Starlette = mcp_app.streamable_http_app()
+

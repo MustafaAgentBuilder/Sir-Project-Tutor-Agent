@@ -1,4 +1,6 @@
 
 .mypy_cache
-Tutor_version_0.1
 Code_practice
+__pycache__
+.env
+.python-version
