@@ -134,3 +134,7 @@ def get_current_topic(user_id: str, auth_token: str) -> dict[str, Any]:
 
 app: Starlette = mcp_app.streamable_http_app()
 
+import uvicorn
+
+if __name__ == "__main__":
+    uvicorn.run("main:app", host="0.0.0.0", port=8001, reload=True)

@@ -4,3 +4,5 @@ Code_practice
 __pycache__
 .env
 .python-version
+Guardrails
+.venv
