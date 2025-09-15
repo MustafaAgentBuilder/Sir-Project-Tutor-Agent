@@ -14,7 +14,7 @@ from agents import (
 )
 from agents.mcp import MCPServerStreamableHttp, MCPServerStreamableHttpParams
 
-from v2_prompt import STUDY_MODE_AGENT_FINAL_V3
+from tutor_prompt import TUTOR_AGENT_FINAL_PROMPT
 
 # Load env
 _ = load_dotenv(find_dotenv())
@@ -45,7 +45,7 @@ async def main():
             session = SQLiteSession(session_id="student_session.db")
 
             # Build instructions: only static safe fields (no user_id, no auth_token)
-            instructions = STUDY_MODE_AGENT_FINAL_V3.format(
+            instructions = TUTOR_AGENT_FINAL_PROMPT.format(
                 co_teacher_name="Sir Junaid",
                 assistant_name="Suzzi",
                 auth_token = "123131332432"
