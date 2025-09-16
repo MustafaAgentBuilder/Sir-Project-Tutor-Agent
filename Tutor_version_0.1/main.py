@@ -15,8 +15,9 @@ from agents.mcp import MCPServerStreamableHttp, MCPServerStreamableHttpParams
 from PROMPTS.tutor_prompt import TUTOR_AGENT_FINAL_PROMPT
 
 # Load env
-_ = load_dotenv(find_dotenv())
+load_dotenv(find_dotenv())
 
+# Provider setup (Gemini, OpenAI-compatible mode)
 Provider = AsyncOpenAI(
     api_key=os.getenv("GEMINI_API_KEY"),
     base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
@@ -26,143 +27,83 @@ model = OpenAIChatCompletionsModel(
     model="gemini-2.0-flash",
     openai_client=Provider,
 )
+
+# Disable tracing
 set_tracing_disabled(True)
+
+# Tavily Key
+tavily_api = os.getenv('TAVILY_API_KEY')
 
 async def get_tutor_agent():
     """
-    Create and return (TutorAgent, session, USER_ID, COURSE_ID, AUTH_TOKEN).
-    Important: this function DOES NOT run the greeting. Chainlit will run the greeting
-    so the output goes to the UI.
+    Create and return (TutorAgent, session, USER_ID, COURSE_ID, AUTH_TOKEN, mcp_servers).
+    Prepares and connects MCP servers. Caller must handle cleanup.
+    Raises ValueError if no MCP servers can be connected.
     """
-    mcp_params = MCPServerStreamableHttpParams(url="http://localhost:8001/mcp")
-    mcp_server = MCPServerStreamableHttp(params=mcp_params, name="TutorMCPToolbox")
-    # Enter the MCP context so tools are available for the agent
-    await mcp_server.__aenter__()
+    print("🔍 Starting get_tutor_agent")
+    # Define MCP server URLs
+    SERVER_URL_1 = "http://localhost:8001/mcp"
+    SERVER_URL_2 = f"https://mcp.tavily.com/mcp/?tavilyApiKey={tavily_api}"
 
+    # MCP parameters
+    mcp_params_1 = MCPServerStreamableHttpParams(url=SERVER_URL_1)
+    mcp_params_2 = MCPServerStreamableHttpParams(url=SERVER_URL_2)
+
+    print(f"MCP SERVER URL 1 -> {mcp_params_1}")
+    print(f"MCP SERVER URL 2 -> {mcp_params_2}")
+
+    mcp_servers = []
+
+    # Server 1
+    try:
+        mcp_server_1 = MCPServerStreamableHttp(params=mcp_params_1, name="TutorMCPToolbox")
+        await mcp_server_1.connect()
+        mcp_servers.append(mcp_server_1)
+        print(f"✅ Connected to {mcp_server_1.name}")
+        # print(f"Cache Tools List Enabled: {mcp_server_1.cache_tools_list}")
+    except Exception as e:
+        print(f"❌ Failed to connect to TutorMCPToolbox: {e}")
+
+    # Server 2
+    try:
+        mcp_server_2 = MCPServerStreamableHttp(params=mcp_params_2, name="TavilySearchMCP")
+        await mcp_server_2.connect()
+        mcp_servers.append(mcp_server_2)
+        print(f"✅ Connected to {mcp_server_2.name}")
+        # print(f"Cache Tools List Enabled: {mcp_server_2.cache_tools_list}")
+    except Exception as e:
+        print(f"❌ Failed to connect to TavilySearchMCP: {e}")
+
+    if not mcp_servers:
+        raise ValueError("⚠️ No MCP servers could be connected - agent will have no tools!")
+
+    # Create SQLite session
     session = SQLiteSession(session_id="student_session.db")
 
+    # Define USER_ID
+    USER_ID = "Mustafa"
+    
+    # Format instructions with USER_ID
     instructions = TUTOR_AGENT_FINAL_PROMPT.format(
         co_teacher_name="Sir Junaid",
         assistant_name="Suzzi",
-        auth_token="123131332432"  # move to env in prod
+        auth_token=os.getenv("AUTH_TOKEN", "123131332432"),
+        student_name=USER_ID  # Replace [student name] with USER_ID
     )
+  
 
+
+    # Create the agent with multiple MCP servers
     TutorAgent = Agent(
         name="TutorAgent",
         model=model,
         instructions=instructions,
-        mcp_servers=[mcp_server],
+        mcp_servers=mcp_servers,  # Pass connected servers
     )
 
-    USER_ID = "student_01"
     COURSE_ID = "PROMPT_ENGINEERING_101"
-    AUTH_TOKEN = "123131332432"
+    AUTH_TOKEN = os.getenv("AUTH_TOKEN", "123131332432")
 
-    # Return everything needed. Do NOT run Runner.run here.
-    return TutorAgent, session, USER_ID, COURSE_ID, AUTH_TOKEN
+    # print(f"🎯 Agent created with {len(mcp_servers)} MCP servers")
 
-# CLI-only test
-if __name__ == "__main__":
-    asyncio.run(get_tutor_agent())
-
-
-
-
-# import asyncio
-# import os
-# from dotenv import load_dotenv, find_dotenv
-
-# from agents import (
-#     Agent,
-#     AsyncOpenAI,
-#     OpenAIChatCompletionsModel,
-#     Runner,
-#     SQLiteSession,
-#     set_tracing_export_api_key,
-#     trace,
-#     set_tracing_disabled 
-# )
-# from agents.mcp import MCPServerStreamableHttp, MCPServerStreamableHttpParams
-
-# from PROMPTS.tutor_prompt import TUTOR_AGENT_FINAL_PROMPT
-
-# # Load env
-# _ = load_dotenv(find_dotenv())
-
-# # Model provider (keep your key in .env)
-# Provider = AsyncOpenAI(
-#     api_key=os.getenv("GEMINI_API_KEY"),
-#     base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
-# )
-
-# model = OpenAIChatCompletionsModel(
-#     model="gemini-2.0-flash",
-#     openai_client=Provider,
-# )
-# set_tracing_disabled(True)
-
-# # Tracing key from env if you use tracing (do NOT hardcode)
-# TRACING_KEY = os.getenv("TRACING_API_KEY")
-# if TRACING_KEY:
-#     set_tracing_export_api_key(TRACING_KEY)
-
-# async def tutorgpt():
-
-#     # Configure MCP server client so agent's tool calls go to http://localhost:8000/mcp
-#     mcp_params = MCPServerStreamableHttpParams(url="http://localhost:8000/mcp")
-#     async with MCPServerStreamableHttp(params=mcp_params, name="TutorMCPToolbox") as mcp_server:
-#         try:
-#             session = SQLiteSession(session_id="student_session.db")
-
-#             # Build instructions: only static safe fields (no user_id, no auth_token)
-#             instructions = TUTOR_AGENT_FINAL_PROMPT.format(
-#                 co_teacher_name="Sir Junaid",
-#                 assistant_name="Suzzi",
-#                 auth_token = "123131332432"
-#             )
-
-#             TutorAgent = Agent(
-#                 name="TutorAgent",
-#                 model=model,
-#                 instructions=instructions,
-#                 mcp_servers=[mcp_server],
-#             )
-
-#             # ---------- DYNAMIC RUN: send user_id and course_id at runtime ----------
-#             # These are safe non-secret identifiers: agent will use them to call MCP tools.
-#             USER_ID = "student_01"
-#             COURSE_ID = "PROMPT_ENGINEERING_101"
-#             auth_token = "123131332432"
-
-#             # The first message tells the agent which student + course this session is for.
-#             # IMPORTANT: Do NOT include auth tokens here.
-#             initial_session_message = (
-#                 f"[SESSION] user_id={USER_ID}; course_id={COURSE_ID}; action=greet  ,  auth_token = {auth_token}"
-#             )
-
-#             # Run the agent; agent will call MCP tools (get_student_profile, get_current_topic, etc.)
-#             result = await Runner.run(starting_agent=TutorAgent, input=initial_session_message, session=session)
-#             print(result.final_output)
-
-#             # Interactive loop: every user message should include (or be associated with) the same user_id/course_id
-#             # We'll attach a small prefix to each user input so the agent knows the session identity.
-#             while True:
-#                 user_text = input("[USER]: ")
-#                 if user_text.strip().lower() in ("exit", "quit"):
-#                     break
-
-#                 # Prepend session identity to the user message so agent can use it for tool calls
-#                 runtime_input = f"[SESSION] user_id={USER_ID}; course_id={COURSE_ID}; user_input={user_text} ,  auth_token = {auth_token}"
-#                 with trace("TutorAgent Run"):
-#                     result = await Runner.run(starting_agent=TutorAgent, input=runtime_input, session=session)
-#                     print(result.final_output)
-
-#         except Exception as e:
-#             print(f"Error during agent setup or runtime: {e}")
-
-# if __name__ == "__main__":
-#     asyncio.run(tutorgpt())
-
-
-
-
+    return TutorAgent, session, USER_ID, COURSE_ID, AUTH_TOKEN, mcp_servers

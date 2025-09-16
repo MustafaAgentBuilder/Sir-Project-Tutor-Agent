@@ -4,7 +4,7 @@ from typing import Any
 
 # Simple test data
 STUDENTS = {
-    "student_01": {
+    "Mustafa": {
         "name": "Muhammad Mustafa",
         "level": "beginner",
         "active_cursor_position": {
